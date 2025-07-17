@@ -172,7 +172,14 @@ def deploy(github_url):
     finally:
         # Clean up temp directory
         if repo_path and os.path.exists(repo_path):
-            shutil.rmtree(repo_path)
+            try:
+                # Try normal cleanup
+                shutil.rmtree(repo_path)
+            except (PermissionError, OSError) as e:
+                # Handle Windows file lock issues
+                click.echo(f"Warning: Could not fully clean up temporary files: {e}", err=True)
+                click.echo("Some temporary files may remain in your temp directory.")
+                # Continue execution despite cleanup failure
 
 
 @cli.command()

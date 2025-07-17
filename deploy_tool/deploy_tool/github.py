@@ -86,8 +86,48 @@ def build_project(repo_path, framework):
         click.echo(f"Building {framework} project...")
         
         if framework == 'nextjs':
-            os.system('npm run build && npm run export')
+            # Check if there's an export script in package.json
+            import json
+            with open('package.json', 'r') as f:
+                package_data = json.load(f)
+            
+            has_export_script = 'export' in package_data.get('scripts', {})
+            
+            if has_export_script:
+                # Older Next.js versions with separate export command
+                os.system('npm run build && npm run export')
+            else:
+                # Newer Next.js versions (>=12) with built-in export
+                # Modify next.config.js to add output: 'export'
+                next_config_path = os.path.join(repo_path, 'next.config.js')
+                
+                if os.path.exists(next_config_path):
+                    with open(next_config_path, 'r') as f:
+                        config_content = f.read()
+                    
+                    if 'output:' not in config_content:
+                        # Backup original config
+                        with open(next_config_path + '.bak', 'w') as f:
+                            f.write(config_content)
+                        
+                        # Add output: 'export' to config
+                        if 'module.exports = {' in config_content:
+                            new_content = config_content.replace(
+                                'module.exports = {', 
+                                'module.exports = {\n  output: "export",')
+                            with open(next_config_path, 'w') as f:
+                                f.write(new_content)
+                
+                # Run the build with export output
+                os.system('npm run build')
+            
+            # Check for out directory (standard export location)
             build_dir = os.path.join(repo_path, 'out')
+            if not os.path.exists(build_dir):
+                # Check for .next/static directory (alternative export location)
+                alt_build_dir = os.path.join(repo_path, '.next', 'static')
+                if os.path.exists(alt_build_dir):
+                    build_dir = alt_build_dir
         elif framework == 'react':
             os.system('npm run build')
             build_dir = os.path.join(repo_path, 'build')
@@ -98,8 +138,24 @@ def build_project(repo_path, framework):
             click.echo("Unknown framework. Cannot build project.")
             return None
         
+        # Try to find an appropriate build directory if the expected one doesn't exist
         if not os.path.exists(build_dir):
-            click.echo(f"Build directory not found: {build_dir}")
+            click.echo(f"Expected build directory not found: {build_dir}")
+            
+            # Look for common build directories
+            possible_dirs = [
+                os.path.join(repo_path, 'build'),
+                os.path.join(repo_path, 'dist'),
+                os.path.join(repo_path, '.next'),
+                os.path.join(repo_path, 'public')
+            ]
+            
+            for possible_dir in possible_dirs:
+                if os.path.exists(possible_dir) and os.path.isdir(possible_dir):
+                    click.echo(f"Using alternative build directory: {possible_dir}")
+                    return possible_dir
+            
+            click.echo("No suitable build directory found.")
             return None
         
         return build_dir
