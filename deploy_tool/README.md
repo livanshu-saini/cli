@@ -4,7 +4,7 @@ A CLI tool for deploying static websites from GitHub to AWS.
 
 ## Features
 
-- Secure AWS credential storage with encryption
+- Simple file-based AWS credential configuration
 - Credential validation and verification
 - Automatic detection and build support for React, Next.js, and Angular projects
 - S3 static website hosting with public access
@@ -32,9 +32,10 @@ deploy-tool init
 ```
 
 This will:
-1. Prompt for your AWS credentials with validation
-2. Encrypt and save them securely in your home directory
-3. Create an S3 bucket for static website hosting
+1. Create a configuration file in `~/.deploy-tool/config.ini`
+2. Open the file in your default text editor
+3. Guide you to fill in your AWS credentials
+4. Validate the provided configuration
 
 ### Verifying Configuration
 
@@ -95,4 +96,14 @@ This will:
 - click - For CLI interface
 - boto3 - For AWS operations
 - gitpython - For GitHub operations
-- cryptography - For secure credential storage
+
+## Configuration File Format
+
+The configuration file is located at `~/.deploy-tool/config.ini` and has the following format:
+
+```ini
+[aws]
+aws_access_key_id = YOURACCESSKEYIDHERE
+aws_secret_access_key = YOURSECRETACCESSKEYHERE
+region_name = us-east-1
+```

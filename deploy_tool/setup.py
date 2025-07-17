@@ -9,7 +9,6 @@ setup(
         "click",
         "boto3",
         "gitpython",
-        "cryptography",
     ],
     entry_points="""
         [console_scripts]

@@ -5,18 +5,20 @@ import boto3
 from botocore.exceptions import ClientError
 import click
 import json
-from .config import load_config, save_state, load_state
+from .config import load_config, save_state, load_state, AWS_SECTION
 
 def get_aws_session():
     """Get an authenticated AWS session."""
     config = load_config()
-    if not config:
+    if not config or AWS_SECTION not in config:
         return None
     
+    aws_config = config[AWS_SECTION]
+    
     session = boto3.Session(
-        aws_access_key_id=config.get('aws_access_key_id'),
-        aws_secret_access_key=config.get('aws_secret_access_key'),
-        region_name=config.get('region_name')
+        aws_access_key_id=aws_config.get('aws_access_key_id'),
+        aws_secret_access_key=aws_config.get('aws_secret_access_key'),
+        region_name=aws_config.get('region_name')
     )
     return session
 
