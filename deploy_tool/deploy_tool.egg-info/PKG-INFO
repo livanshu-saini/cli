@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: deploy-tool
+Version: 0.1.0
+Summary: A CLI tool for deploying static sites to AWS
+Author: Author
+Author-email: author@example.com
+Keywords: aws,deployment,static-site
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Requires-Python: >=3.6
+Requires-Dist: click
+Requires-Dist: boto3
+Requires-Dist: gitpython
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
