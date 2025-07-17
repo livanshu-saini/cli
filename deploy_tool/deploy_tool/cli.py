@@ -139,28 +139,75 @@ def deploy(github_url):
         s3_resource = session.resource('s3')
         bucket = s3_resource.Bucket(bucket_name)
         
-        for root, _, files in os.walk(build_dir):
-            for file in files:
-                local_path = os.path.join(root, file)
-                relative_path = os.path.relpath(local_path, build_dir)
-                
-                # Determine content type
-                content_type = 'text/html'
-                if file.endswith('.css'):
-                    content_type = 'text/css'
-                elif file.endswith('.js'):
-                    content_type = 'application/javascript'
-                elif file.endswith('.json'):
-                    content_type = 'application/json'
-                elif file.endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                    content_type = f'image/{file.split(".")[-1]}'
-                
-                click.echo(f"Uploading: {relative_path}")
-                bucket.upload_file(
-                    local_path, 
-                    relative_path,
-                    ExtraArgs={'ContentType': content_type}
-                )
+        # Special handling for SPA frameworks (React, Angular, Next.js) to ensure proper routing
+        if framework in ['react', 'angular', 'nextjs']:
+            click.echo(f"Configuring deployment for {framework} single-page application...")
+            
+            # Ensure proper MIME types and caching for React apps
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    local_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(local_path, build_dir)
+                    
+                    # Determine content type with better MIME type handling
+                    content_type = 'text/plain'
+                    cache_control = 'max-age=86400'  # Default cache of 1 day
+                    
+                    if file.endswith('.html'):
+                        content_type = 'text/html'
+                        cache_control = 'max-age=60'  # Short cache for HTML files
+                    elif file.endswith('.css'):
+                        content_type = 'text/css'
+                        cache_control = 'max-age=31536000'  # 1 year for static assets
+                    elif file.endswith('.js'):
+                        content_type = 'application/javascript'
+                        cache_control = 'max-age=31536000'  # 1 year for static assets
+                    elif file.endswith('.json'):
+                        content_type = 'application/json'
+                    elif file.endswith('.svg'):
+                        content_type = 'image/svg+xml'
+                    elif file.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                        file_ext = file.split(".")[-1]
+                        content_type = f'image/{file_ext.lower()}'
+                        cache_control = 'max-age=31536000'  # 1 year for images
+                    elif file.endswith(('.woff', '.woff2', '.eot', '.ttf', '.otf')):
+                        file_ext = file.split(".")[-1]
+                        content_type = f'font/{file_ext.lower()}'
+                        cache_control = 'max-age=31536000'  # 1 year for fonts
+                    
+                    click.echo(f"Uploading: {relative_path} [{content_type}]")
+                    bucket.upload_file(
+                        local_path, 
+                        relative_path,
+                        ExtraArgs={
+                            'ContentType': content_type,
+                            'CacheControl': cache_control
+                        }
+                    )
+        else:
+            # Standard file upload for other frameworks
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    local_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(local_path, build_dir)
+                    
+                    # Determine content type
+                    content_type = 'text/html'
+                    if file.endswith('.css'):
+                        content_type = 'text/css'
+                    elif file.endswith('.js'):
+                        content_type = 'application/javascript'
+                    elif file.endswith('.json'):
+                        content_type = 'application/json'
+                    elif file.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                        content_type = f'image/{file.split(".")[-1]}'
+                    
+                    click.echo(f"Uploading: {relative_path}")
+                    bucket.upload_file(
+                        local_path, 
+                        relative_path,
+                        ExtraArgs={'ContentType': content_type}
+                    )
         
         # Output the URL - using ap-south-1 region
         region = 'ap-south-1'

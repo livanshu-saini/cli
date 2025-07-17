@@ -132,8 +132,39 @@ def build_project(repo_path, framework):
             os.system('npm run build')
             build_dir = os.path.join(repo_path, 'build')
         elif framework == 'angular':
-            os.system('npm run build -- --prod')
-            build_dir = os.path.join(repo_path, 'dist')
+            # Check if there's a specific project name in angular.json
+            project_name = None
+            angular_config_path = os.path.join(repo_path, 'angular.json')
+            if os.path.exists(angular_config_path):
+                try:
+                    with open(angular_config_path, 'r') as f:
+                        angular_config = json.load(f)
+                    
+                    # Get default project from angular.json
+                    if "defaultProject" in angular_config:
+                        project_name = angular_config["defaultProject"]
+                    # Or get the first project as fallback
+                    elif "projects" in angular_config and angular_config["projects"]:
+                        project_name = next(iter(angular_config["projects"]))
+                    
+                    if project_name:
+                        click.echo(f"Detected Angular project name: {project_name}")
+                except Exception as e:
+                    click.echo(f"Could not parse angular.json: {e}", err=True)
+            
+            # Build the Angular project
+            os.system('npm run build -- --configuration=production')
+            
+            # Check for project-specific build directory
+            if project_name:
+                project_build_dir = os.path.join(repo_path, 'dist', project_name)
+                if os.path.exists(project_build_dir):
+                    build_dir = project_build_dir
+                    click.echo(f"Using Angular project-specific build directory: {build_dir}")
+                else:
+                    build_dir = os.path.join(repo_path, 'dist')
+            else:
+                build_dir = os.path.join(repo_path, 'dist')
         else:
             click.echo("Unknown framework. Cannot build project.")
             return None
@@ -153,8 +184,29 @@ def build_project(repo_path, framework):
             for possible_dir in possible_dirs:
                 if os.path.exists(possible_dir) and os.path.isdir(possible_dir):
                     click.echo(f"Using alternative build directory: {possible_dir}")
+                    
+                    # Check if this directory contains index.html
+                    if os.path.exists(os.path.join(possible_dir, 'index.html')):
+                        return possible_dir
+                    
+                    # If no index.html in the root, check for one level down (common in some builds)
+                    subdirs = [d for d in os.listdir(possible_dir) 
+                              if os.path.isdir(os.path.join(possible_dir, d))]
+                    
+                    for subdir in subdirs:
+                        subdir_path = os.path.join(possible_dir, subdir)
+                        if os.path.exists(os.path.join(subdir_path, 'index.html')):
+                            click.echo(f"Found index.html in subdirectory: {subdir_path}")
+                            return subdir_path
+                    
+                    # If we got here but didn't find an index.html, use the directory anyway
                     return possible_dir
             
+            # Check for direct presence of index.html in repo root (simple static sites)
+            if os.path.exists(os.path.join(repo_path, 'index.html')):
+                click.echo("Found index.html in repository root, using that as the build directory")
+                return repo_path
+                
             click.echo("No suitable build directory found.")
             return None
         

@@ -108,13 +108,28 @@ This will:
 - boto3 - For AWS operations
 - gitpython - For GitHub operations
 
-## Configuration File Format
+## Framework-Specific Considerations
 
-The configuration file is located at `~/.deploy-tool/config.ini` and has the following format:
+### React Applications
+- Properly configured for client-side routing with S3
+- All static assets will be served with correct MIME types and cache headers
+- Supports Create React App and other React frameworks
 
-```ini
-[aws]
-aws_access_key_id = YOURACCESSKEYIDHERE
-aws_secret_access_key = YOURSECRETACCESSKEYHERE
-region_name = us-east-1
-```
+### Angular Applications
+- Automatically detects project structure from angular.json
+- Configures S3 for proper client-side routing
+- Handles Angular's build output structure
+
+### Next.js Applications
+- Supports both older (with export command) and newer Next.js versions
+- Automatically configures next.config.js for static export when needed
+- Note: Server-side features like API routes won't work on S3 static hosting
+
+## AWS Credentials
+
+This tool uses the AWS SDK's default credential provider chain, which will look for credentials in the following order:
+
+1. Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`)
+2. Shared credential file (`~/.aws/credentials`)
+3. IAM Role for Amazon EC2 or ECS task role
+4. AWS SSO credentials from the AWS CLI

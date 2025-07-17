@@ -84,11 +84,12 @@ def create_s3_bucket(bucket_name=None):
             CreateBucketConfiguration={'LocationConstraint': region}
         )
         
-        # Configure for static website hosting
+        # Configure for static website hosting with SPA support
+        # Use index.html for both the index document and error document to support SPA routing
         s3.put_bucket_website(
             Bucket=bucket_name,
             WebsiteConfiguration={
-                'ErrorDocument': {'Key': 'error.html'},
+                'ErrorDocument': {'Key': 'index.html'},
                 'IndexDocument': {'Suffix': 'index.html'}
             }
         )
