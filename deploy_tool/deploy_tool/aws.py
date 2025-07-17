@@ -93,23 +93,43 @@ def create_s3_bucket(bucket_name=None):
             }
         )
         
-        # Set bucket policy to allow public access
-        bucket_policy = {
-            'Version': '2012-10-17',
-            'Statement': [{
-                'Sid': 'PublicReadGetObject',
-                'Effect': 'Allow',
-                'Principal': '*',
-                'Action': ['s3:GetObject'],
-                'Resource': f'arn:aws:s3:::{bucket_name}/*'
-            }]
-        }
-        s3.put_bucket_policy(
-            Bucket=bucket_name,
-            Policy=json.dumps(bucket_policy)
-        )
+        # Disable block public access settings for this bucket
+        try:
+            s3.put_public_access_block(
+                Bucket=bucket_name,
+                PublicAccessBlockConfiguration={
+                    'BlockPublicAcls': False,
+                    'IgnorePublicAcls': False,
+                    'BlockPublicPolicy': False,
+                    'RestrictPublicBuckets': False
+                }
+            )
+            click.echo("Disabled block public access settings for the bucket")
+        except ClientError as e:
+            click.echo(f"Warning: Couldn't disable block public access settings: {e}", err=True)
+            click.echo("You may need to disable these settings manually in the AWS console.")
         
-        # Save to state
+        # Set bucket policy to allow public access
+        try:
+            bucket_policy = {
+                'Version': '2012-10-17',
+                'Statement': [{
+                    'Sid': 'PublicReadGetObject',
+                    'Effect': 'Allow',
+                    'Principal': '*',
+                    'Action': ['s3:GetObject'],
+                    'Resource': f'arn:aws:s3:::{bucket_name}/*'
+                }]
+            }
+            s3.put_bucket_policy(
+                Bucket=bucket_name,
+                Policy=json.dumps(bucket_policy)
+            )
+        except ClientError as e:
+            click.echo(f"Warning: Couldn't set bucket policy: {e}", err=True)
+            click.echo("You may need to manually set the bucket policy to make it public.")
+        
+        # Save to state even if we had warnings, as long as the bucket was created
         state = load_state()
         state['resources'].append({
             'type': 's3_bucket',
@@ -119,11 +139,21 @@ def create_s3_bucket(bucket_name=None):
         
         click.echo(f"Created S3 bucket: {bucket_name}")
         click.echo(f"Website URL: http://{bucket_name}.s3-website.{region}.amazonaws.com")
+        click.echo("\nNote: If the bucket is not publicly accessible, you may need to:")
+        click.echo("1. Go to the S3 console: https://s3.console.aws.amazon.com/")
+        click.echo(f"2. Select bucket '{bucket_name}'")
+        click.echo("3. Go to 'Permissions' tab")
+        click.echo("4. Edit 'Block public access' settings and uncheck all options")
+        click.echo("5. Under 'Bucket policy', add a policy to make the bucket public")
         
         return True
     
     except ClientError as e:
-        click.echo(f"Error creating S3 bucket: {e}", err=True)
+        if "BucketAlreadyExists" in str(e):
+            click.echo(f"Error: Bucket name '{bucket_name}' already exists. Try again with a different name.", err=True)
+        else:
+            click.echo(f"Error creating S3 bucket: {e}", err=True)
+        
         return False
 
 def delete_s3_bucket(bucket_name):

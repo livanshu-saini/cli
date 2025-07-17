@@ -78,10 +78,11 @@ def init():
     bucket_name = f"static-site-{bucket_suffix}"
     
     if click.confirm(f"Would you like to create an S3 bucket named '{bucket_name}' for static website hosting?"):
-        if create_s3_bucket(bucket_name):
+        success = create_s3_bucket(bucket_name)
+        if success:
             click.echo("Infrastructure setup complete.")
         else:
-            click.echo("Failed to create infrastructure. Please check your AWS credentials and permissions.", err=True)
+            click.echo("Failed to create infrastructure completely. Check the error messages above for details.", err=True)
 
 
 @cli.command()
