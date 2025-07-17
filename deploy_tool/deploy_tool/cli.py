@@ -87,7 +87,8 @@ def init():
 
 @cli.command()
 @click.argument('github_url')
-def deploy(github_url):
+@click.option('--debug', is_flag=True, help="Show additional debug information during deployment")
+def deploy(github_url, debug):
     """Deploy a static site from GitHub to AWS.
     
     GITHUB_URL is the URL of the GitHub repository to deploy.
@@ -143,6 +144,37 @@ def deploy(github_url):
         if framework in ['react', 'angular', 'nextjs']:
             click.echo(f"Configuring deployment for {framework} single-page application...")
             
+            # Check for index.html in the build directory and validate its content
+            index_path = os.path.join(build_dir, 'index.html')
+            if not os.path.exists(index_path):
+                click.echo("Warning: No index.html found in build directory!", err=True)
+                if debug:
+                    click.echo("Build directory contents:")
+                    for item in os.listdir(build_dir):
+                        click.echo(f"  - {item}")
+            else:
+                # Check if index.html is not empty and has actual content
+                with open(index_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    index_content = f.read()
+                    
+                if len(index_content) < 100:
+                    click.echo("Warning: index.html seems unusually small!", err=True)
+                
+                if debug:
+                    click.echo(f"index.html size: {len(index_content)} bytes")
+                    # Check for basic elements that should be in a properly built React app
+                    has_root_div = '<div id="root"' in index_content or '<div id="app"' in index_content
+                    has_js_imports = '.js"' in index_content
+                    click.echo(f"index.html has root div: {has_root_div}")
+                    click.echo(f"index.html has JS imports: {has_js_imports}")
+            
+            # For React apps, check for JS files that might indicate proper build
+            if framework == 'react' and debug:
+                js_files = [f for f in os.listdir(build_dir) if f.endswith('.js') and os.path.isfile(os.path.join(build_dir, f))]
+                click.echo(f"Found {len(js_files)} JavaScript files in build directory")
+                for js_file in js_files[:5]:  # Show up to 5 files
+                    click.echo(f"  - {js_file}")
+            
             # Ensure proper MIME types and caching for React apps
             for root, _, files in os.walk(build_dir):
                 for file in files:
@@ -155,7 +187,7 @@ def deploy(github_url):
                     
                     if file.endswith('.html'):
                         content_type = 'text/html'
-                        cache_control = 'max-age=60'  # Short cache for HTML files
+                        cache_control = 'no-cache, no-store, must-revalidate'  # Prevent caching for HTML files
                     elif file.endswith('.css'):
                         content_type = 'text/css'
                         cache_control = 'max-age=31536000'  # 1 year for static assets

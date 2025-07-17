@@ -129,8 +129,47 @@ def build_project(repo_path, framework):
                 if os.path.exists(alt_build_dir):
                     build_dir = alt_build_dir
         elif framework == 'react':
-            os.system('npm run build')
+            # First, check if this is a Create React App project or another React framework
+            package_json_path = os.path.join(repo_path, 'package.json')
+            is_cra = False
+            if os.path.exists(package_json_path):
+                with open(package_json_path, 'r') as f:
+                    package_data = json.load(f)
+                
+                # Check for CRA dependencies or scripts
+                deps = {**package_data.get('dependencies', {}), **package_data.get('devDependencies', {})}
+                scripts = package_data.get('scripts', {})
+                
+                if 'react-scripts' in deps or ('build' in scripts and 'react-scripts build' in scripts.get('build')):
+                    is_cra = True
+                    click.echo("Detected Create React App project")
+            
+            # Check for environment variables that might be needed
+            env_file = os.path.join(repo_path, '.env')
+            if not os.path.exists(env_file):
+                # Create basic .env file for CRA if it doesn't exist
+                with open(env_file, 'w') as f:
+                    f.write("# Added by deploy-tool\n")
+                    f.write("GENERATE_SOURCEMAP=false\n")  # Disable source maps for production
+                    f.write("PUBLIC_URL=./\n")  # Use relative paths
+            
+            # Run the build command
+            click.echo("Building React application...")
+            build_result = os.system('npm run build')
+            
+            if build_result != 0:
+                click.echo("Build failed. Trying alternative build approaches...")
+                # Some projects might use different build scripts
+                os.system('npm run prod') or os.system('npm run production')
+            
             build_dir = os.path.join(repo_path, 'build')
+            
+            # If build directory doesn't exist, check for 'dist' which some React projects use
+            if not os.path.exists(build_dir):
+                alt_build_dir = os.path.join(repo_path, 'dist')
+                if os.path.exists(alt_build_dir):
+                    build_dir = alt_build_dir
+                    click.echo(f"Using alternative build directory: {build_dir}")
         elif framework == 'angular':
             # Check if there's a specific project name in angular.json
             project_name = None
