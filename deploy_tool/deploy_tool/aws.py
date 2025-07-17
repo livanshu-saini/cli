@@ -88,7 +88,7 @@ def create_s3_bucket(bucket_name=None):
         s3.put_bucket_website(
             Bucket=bucket_name,
             WebsiteConfiguration={
-                'ErrorDocument': {'Suffix': 'index.html'},
+                'ErrorDocument': {'Key': 'error.html'},
                 'IndexDocument': {'Suffix': 'index.html'}
             }
         )
