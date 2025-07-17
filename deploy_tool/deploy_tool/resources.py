@@ -35,7 +35,7 @@ def get_resources_summary():
                 try:
                     s3.head_bucket(Bucket=resource['name'])
                     status = "active"
-                    website_url = f"http://{resource['name']}.s3-website-{region}.amazonaws.com"
+                    website_url = f"http://{resource['name']}.s3-website.{region}.amazonaws.com"
                 except Exception:
                     status = "not found"
                     website_url = "N/A"

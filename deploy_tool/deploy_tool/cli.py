@@ -81,16 +81,6 @@ def init():
         if create_s3_bucket(bucket_name):
             click.echo("Infrastructure setup complete.")
         else:
-            click.echo("Failed to create infrastructure. Please check your AWS permissions.", err=True)
-    
-    # Create a unique S3 bucket for static website hosting
-    bucket_suffix = uuid.uuid4().hex[:8]
-    bucket_name = f"static-site-{bucket_suffix}"
-    
-    if click.confirm(f"Would you like to create an S3 bucket named '{bucket_name}' for static website hosting?"):
-        if create_s3_bucket(bucket_name):
-            click.echo("Infrastructure setup complete.")
-        else:
             click.echo("Failed to create infrastructure. Please check your AWS credentials and permissions.", err=True)
 
 

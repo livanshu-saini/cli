@@ -88,8 +88,8 @@ def create_s3_bucket(bucket_name=None):
         s3.put_bucket_website(
             Bucket=bucket_name,
             WebsiteConfiguration={
-                'ErrorDocument': {'Key': 'index.html'},
-                'IndexDocument': {'Key': 'index.html'}
+                'ErrorDocument': {'Suffix': 'index.html'},
+                'IndexDocument': {'Suffix': 'index.html'}
             }
         )
         
@@ -118,7 +118,7 @@ def create_s3_bucket(bucket_name=None):
         save_state(state)
         
         click.echo(f"Created S3 bucket: {bucket_name}")
-        click.echo(f"Website URL: http://{bucket_name}.s3-website-{region}.amazonaws.com")
+        click.echo(f"Website URL: http://{bucket_name}.s3-website.{region}.amazonaws.com")
         
         return True
     
