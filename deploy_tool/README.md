@@ -4,8 +4,8 @@ A CLI tool for deploying static websites from GitHub to AWS.
 
 ## Features
 
-- Simple file-based AWS credential configuration
-- Credential validation and verification
+- Seamless AWS credentials handling using AWS credential provider chain
+- Support for environment variables, AWS CLI profiles, and SSO
 - Automatic detection and build support for React, Next.js, and Angular projects
 - S3 static website hosting with public access
 - Resource management and listing
@@ -27,15 +27,26 @@ pip install -e .
 ### Initial Setup
 
 ```bash
-# Configure AWS credentials and create infrastructure
+# Configure your AWS credentials using one of these methods:
+# Option 1: Set environment variables
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_REGION=ap-south-1
+
+# Option 2: Configure the AWS CLI
+aws configure
+
+# Option 3: Set up AWS SSO
+aws configure sso
+
+# Then initialize the infrastructure
 deploy-tool init
 ```
 
 This will:
-1. Create a configuration file in `~/.deploy-tool/config.ini`
-2. Open the file in your default text editor
-3. Guide you to fill in your AWS credentials
-4. Validate the provided configuration
+1. Verify your AWS credentials
+2. Create an S3 bucket for static website hosting
+3. Save the state information for future reference
 
 ### Verifying Configuration
 
@@ -45,9 +56,9 @@ deploy-tool verify
 ```
 
 This will:
-1. Check if your configuration file exists and is valid
-2. Test your AWS credentials with the AWS API
-3. Display the AWS account information if successful
+1. Test your AWS credentials using the AWS STS service
+2. Display your AWS account ID and username
+3. List any resources that have been created by the tool
 
 ### Listing Resources
 

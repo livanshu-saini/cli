@@ -5,22 +5,42 @@ import boto3
 from botocore.exceptions import ClientError
 import click
 import json
-from .config import load_config, save_state, load_state, AWS_SECTION
+import uuid
+from .config import save_state, load_state
 
 def get_aws_session():
-    """Get an authenticated AWS session."""
-    config = load_config()
-    if not config or AWS_SECTION not in config:
+    """Get an authenticated AWS session using the default credential provider chain.
+    
+    Uses credentials from:
+    - Environment variables
+    - AWS config files
+    - IAM roles
+    - SSO tokens
+    """
+    try:
+        # Create a session using default credential provider chain
+        # This will use credentials from environment variables, config files, 
+        # instance profiles, or SSO automatically
+        session = boto3.Session(region_name='ap-south-1')
+        return session
+    except Exception as e:
+        click.echo(f"Error getting AWS session: {e}", err=True)
         return None
+
+def get_aws_client(service_name):
+    """Get an AWS client for the specified service.
     
-    aws_config = config[AWS_SECTION]
-    
-    session = boto3.Session(
-        aws_access_key_id=aws_config.get('aws_access_key_id'),
-        aws_secret_access_key=aws_config.get('aws_secret_access_key'),
-        region_name=aws_config.get('region_name')
-    )
-    return session
+    Args:
+        service_name (str): The AWS service name (e.g., 's3', 'cloudfront')
+        
+    Returns:
+        boto3.client: The AWS client or None if credentials are not available
+    """
+    session = get_aws_session()
+    if not session:
+        return None
+        
+    return session.client(service_name)
 
 def verify_aws_credentials():
     """Verify that the AWS credentials are valid.
@@ -28,38 +48,41 @@ def verify_aws_credentials():
     Returns:
         tuple: (is_valid, error_message)
     """
-    session = get_aws_session()
-    if not session:
-        return False, "No AWS credentials configured"
-    
     try:
-        # Try a simple AWS API call
-        sts = session.client('sts')
-        response = sts.get_caller_identity()
+        # Get the STS client directly
+        sts_client = get_aws_client('sts')
+        if not sts_client:
+            return False, "No AWS credentials found. Make sure you've configured AWS credentials."
+        
+        # Try to get caller identity
+        response = sts_client.get_caller_identity()
         account_id = response.get('Account')
-        return True, f"AWS credentials valid for account: {account_id}"
+        username = response.get('Arn').split('/')[-1]
+        return True, f"AWS credentials valid for account: {account_id} (user: {username})"
     except Exception as e:
         return False, f"AWS credentials invalid: {str(e)}"
 
-def create_s3_bucket(bucket_name):
+def create_s3_bucket(bucket_name=None):
     """Create an S3 bucket for static site hosting."""
-    session = get_aws_session()
-    if not session:
+    # Generate a unique bucket name if not provided
+    if not bucket_name:
+        bucket_name = f"static-site-{uuid.uuid4().hex[:8]}"
+    
+    # Get S3 client
+    s3 = get_aws_client('s3')
+    if not s3:
+        click.echo("Failed to get AWS S3 client. Check your AWS credentials.", err=True)
         return False
     
-    s3 = session.client('s3')
-    
     try:
-        # Create the bucket
-        region = session.region_name
+        # Fixed region for ap-south-1
+        region = 'ap-south-1'
         
-        if region == 'us-east-1':
-            s3.create_bucket(Bucket=bucket_name)
-        else:
-            s3.create_bucket(
-                Bucket=bucket_name,
-                CreateBucketConfiguration={'LocationConstraint': region}
-            )
+        # Create the bucket with location constraint
+        s3.create_bucket(
+            Bucket=bucket_name,
+            CreateBucketConfiguration={'LocationConstraint': region}
+        )
         
         # Configure for static website hosting
         s3.put_bucket_website(
@@ -105,14 +128,15 @@ def create_s3_bucket(bucket_name):
 
 def delete_s3_bucket(bucket_name):
     """Delete an S3 bucket."""
-    session = get_aws_session()
-    if not session:
+    # Get S3 client
+    s3 = get_aws_client('s3')
+    if not s3:
+        click.echo("Failed to get AWS S3 client. Check your AWS credentials.", err=True)
         return False
-    
-    s3 = session.client('s3')
     
     try:
         # First delete all objects
+        session = get_aws_session()
         bucket = session.resource('s3').Bucket(bucket_name)
         bucket.objects.all().delete()
         
